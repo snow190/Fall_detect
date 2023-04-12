@@ -107,8 +107,9 @@ def repeat_timer(): #每五秒就+1 可以當成時間間距
     else:
         threading.Timer(5.0, repeat_timer).cancel()
 
-repeat_timer()
 cleanData()
+repeat_timer()
+
 while success:
     pointlist = []
     success, img = cap.read()
