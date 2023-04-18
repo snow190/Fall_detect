@@ -38,10 +38,12 @@ file_count=0
 ending = 0
 #日期戳記
 lastday = 0
+table = 0
 def cleanData():
     # 更改對象處
-    folder_path = 'C:/Users/ASUS/Desktop/Topic_code/image/'
-    # folder_path = 'D:/Topic_code/img/'  # 黃的設置文件夾路徑
+    folder_path = r'C:\Users\ASUS\Desktop\Topic_code\image\{}'.format(table)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         os.remove(file_path)
@@ -58,7 +60,7 @@ def cleanData():
                           uid="sa", pwd="jkl0979229277")
     cursor = conn.cursor()
     # sql = "TRUNCATE TABLE test9;"
-    sql = "TRUNCATE TABLE jkl_7777;"
+    sql = "TRUNCATE TABLE {};".format(table)
 
     cursor.execute(sql)
     conn.commit()  # 更新資料庫
@@ -68,7 +70,9 @@ def cleanData():
 def repeat_timer(): #每五秒就+1 可以當成時間間距
     global img_count,file_count
     # 更改對象處
-    folder_path = 'C:/Users/ASUS/Desktop/Topic_code/image/' #徐的設置文件夾路徑
+    folder_path = r'C:\Users\ASUS\Desktop\Topic_code\image\{}'.format(table) #徐的設置文件夾路徑
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
     # folder_path = 'D:/Topic_code/img/'  # 黃的設置文件夾路徑
     # 更改對象處
     # conn = pyodbc.connect(driver="SQL Server Native Client 11.0",
@@ -85,18 +89,21 @@ def repeat_timer(): #每五秒就+1 可以當成時間間距
     file_list = os.listdir(folder_path)  # 取得目標資料夾下的所有檔案
     # 更改對象處
     # sql = "SELECT COUNT(*) FROM test9"   #這裡需要改table名稱
-    sql = "SELECT COUNT(*) FROM jkl_7777"  #黃的sql資料數量
+    sql = "SELECT COUNT(*) FROM {}".format(table)  #黃的sql資料數量
     cursor.execute(sql)
     num_records = cursor.fetchone()[0]  #取得sql資料數量
+    print("sql資料數量: "+str(num_records))
+    print("圖片數量: "+str(len(file_list)))
     if len(file_list) != num_records: #資料夾檔案數與sql資料數去做比較
         img_count += 1
-        with open(folder_path + file_list[file_count], 'rb') as f:
+        image_path = os.path.join(folder_path, file_list[file_count])
+        with open(image_path, 'rb') as f:
             img_data = f.read()
         encodestring = base64.b64encode(img_data)  # jpg檔轉至base64
         cursor = conn.cursor()
         # 更改對象處
         # sql_save = "INSERT INTO test9(timer, img) values (?,?)" #徐的插入sql
-        sql_save = "INSERT INTO jkl_7777 (timer, img) values (?,?)"   #黃的sql
+        sql_save = "INSERT INTO {} (timer, img) values (?,?)".format(table)  #黃的sql
         cursor.execute(sql_save, (file_list[file_count] , encodestring))
         file_count+=1
 
@@ -106,7 +113,33 @@ def repeat_timer(): #每五秒就+1 可以當成時間間距
         threading.Timer(5.0, repeat_timer).start()
     else:
         threading.Timer(5.0, repeat_timer).cancel()
+def check_account():
+    global table
+    conn = pyodbc.connect(driver="SQL Server Native Client 11.0", server="123.195.132.32,1433",
+                          database="Basic_Information",
+                          uid="sa", pwd="jkl0979229277")
+    cursor = conn.cursor()
+    username = input('請輸入帳號：')
+    password = input('請輸入密碼：')
+    cursor.execute("SELECT COUNT(*) FROM DataTest WHERE Account=? AND Password=?", (username, password))
+    result = cursor.fetchall()
 
+    for row in result:
+        if row[0] > 0:
+            print("帳號密碼正確！")
+            table = username
+            break
+        else:
+            print("帳號密碼錯誤，請重新輸入！")
+            check_account()
+    cursor.close()
+    conn.close()
+
+
+
+
+
+check_account()
 cleanData()
 repeat_timer()
 
@@ -154,15 +187,18 @@ while success:
             if bs == 2:  # &&計時有剛好在秒數上
                 Falldown_1 += 1
                 lmList, bbox = detector.findPosition(img,False)
-                repeat_timer()
                 #更改對象處
                 # folder_path = 'D:/Topic_code/img/'  # 黃的設置文件夾路徑
-                folder_path = 'C:/Users/ASUS/Desktop/Topic_code/image/'  # 設置文件夾路徑
+
 
                 if Falldown_1%5 ==0:#可以直接避免大量的照片存入 可以有時間差距
                     try:
+                        folder_path = 'C://Users//ASUS//Desktop//Topic_code//image//{}'.format(table)  # 設置文件夾路徑
+                        if not os.path.exists(folder_path):
+                            os.makedirs(folder_path)
                         imageName = str(time.strftime('%Y.%m.%d %H-%M-%S', time.localtime(time.time()))) + ".jpg"
-                        screenshot = cv2.imwrite(folder_path+imageName, img)
+                        image_path = os.path.join(folder_path,imageName)
+                        screenshot = cv2.imwrite(image_path, img)
                     except OSError:
                         print(folder_path+imageName + ' is not a valid image file.')
 
@@ -174,12 +210,12 @@ while success:
             pTime = cTime
 
         cv2.imshow("Fall_Src", img)
-
         if cv2.waitKey(113) == ord("q"):
             cleanData() #取消後刪除sql資料
             success = 0
 
             break
+
 
 cap.release()
 cv2.destroyAllWindows()
